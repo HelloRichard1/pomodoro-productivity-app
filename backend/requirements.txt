@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+transformers
+torch
+accelerate
+safetensors
+sentencepiece
+protobuf
+Pillow
+pytesseract
+langgraph
+python-multipart

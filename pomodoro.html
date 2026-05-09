@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pomodoro Counter</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #1b1f34;
+      color: #f8f9ff;
+      display: flex;
+      min-height: 100vh;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .app {
+      width: min(420px, 90vw);
+      background: linear-gradient(180deg, #2a2f58 0%, #202447 100%);
+      border-radius: 24px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+      padding: 32px;
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: 2rem;
+      letter-spacing: 0.04em;
+    }
+
+    p {
+      margin: 0 0 24px;
+      color: #b8c1ff;
+    }
+
+    .timer {
+      font-size: 4.5rem;
+      font-weight: 700;
+      margin: 24px 0;
+      letter-spacing: 0.02em;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 10px 18px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #d6dcff;
+      margin-bottom: 24px;
+      font-weight: 600;
+    }
+
+    .controls,
+    .stats {
+      display: grid;
+      gap: 12px;
+    }
+
+    .controls button,
+    .mode button {
+      border: none;
+      border-radius: 14px;
+      padding: 14px 18px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.16s ease, background 0.16s ease;
+    }
+
+    .controls button:hover,
+    .mode button:hover {
+      transform: translateY(-1px);
+    }
+
+    .controls button:active,
+    .mode button:active {
+      transform: translateY(0);
+    }
+
+    .controls button {
+      background: #5c6cff;
+      color: #fff;
+    }
+
+    .controls button.secondary {
+      background: #3f4a8a;
+    }
+
+    .mode {
+      grid-template-columns: repeat(3, 1fr);
+      margin-top: 24px;
+    }
+
+    .mode button {
+      background: #2e3353;
+      color: #c6d0ff;
+    }
+
+    .mode button.active {
+      background: #5c6cff;
+      color: #fff;
+    }
+
+    .stats {
+      grid-template-columns: repeat(2, 1fr);
+      margin-top: 24px;
+      gap: 16px;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      padding: 18px;
+      text-align: left;
+    }
+
+    .card strong {
+      display: block;
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>Pomodoro Counter</h1>
+    <p>Stay focused with a simple work timer and session tracker.</p>
+    <div class="status" id="status">Ready</div>
+    <div class="timer" id="timer">25:00</div>
+    <div class="controls">
+      <button id="startBtn">Start</button>
+      <button class="secondary" id="pauseBtn">Pause</button>
+      <button class="secondary" id="resetBtn">Reset</button>
+    </div>
+    <div class="mode">
+      <button id="workMode" class="active">Work</button>
+      <button id="shortBreakMode">Short Break</button>
+      <button id="longBreakMode">Long Break</button>
+    </div>
+    <div class="stats">
+      <div class="card">
+        <strong id="sessionCount">0</strong>
+        Completed Pomodoros
+      </div>
+      <div class="card">
+        <strong id="nextBreak">Short Break</strong>
+        Next break type
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const timerDisplay = document.getElementById('timer');
+    const statusDisplay = document.getElementById('status');
+    const sessionCountDisplay = document.getElementById('sessionCount');
+    const nextBreakDisplay = document.getElementById('nextBreak');
+    const startBtn = document.getElementById('startBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const workModeBtn = document.getElementById('workMode');
+    const shortBreakBtn = document.getElementById('shortBreakMode');
+    const longBreakBtn = document.getElementById('longBreakMode');
+
+    const modes = {
+      work: { label: 'Work', seconds: 25 * 60 },
+      shortBreak: { label: 'Short Break', seconds: 5 * 60 },
+      longBreak: { label: 'Long Break', seconds: 15 * 60 },
+    };
+
+    let currentMode = 'work';
+    let remainingSeconds = modes[currentMode].seconds;
+    let timerId = null;
+    let completedPomodoros = 0;
+    let completedCycles = 0;
+
+    function formatTime(seconds) {
+      const minutes = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function updateUI() {
+      timerDisplay.textContent = formatTime(remainingSeconds);
+      statusDisplay.textContent = timerId ? `Running ${modes[currentMode].label}` : `Ready for ${modes[currentMode].label}`;
+      sessionCountDisplay.textContent = completedPomodoros;
+      nextBreakDisplay.textContent = completedCycles >= 4 ? 'Long Break' : 'Short Break';
+      workModeBtn.classList.toggle('active', currentMode === 'work');
+      shortBreakBtn.classList.toggle('active', currentMode === 'shortBreak');
+      longBreakBtn.classList.toggle('active', currentMode === 'longBreak');
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      remainingSeconds = modes[mode].seconds;
+      stopTimer();
+      updateUI();
+    }
+
+    function startTimer() {
+      if (timerId) return;
+      timerId = setInterval(() => {
+        remainingSeconds -= 1;
+        if (remainingSeconds <= 0) {
+          clearInterval(timerId);
+          timerId = null;
+          onTimerComplete();
+        }
+        updateUI();
+      }, 1000);
+      updateUI();
+    }
+
+    function pauseTimer() {
+      if (!timerId) return;
+      clearInterval(timerId);
+      timerId = null;
+      updateUI();
+    }
+
+    function resetTimer() {
+      remainingSeconds = modes[currentMode].seconds;
+      stopTimer();
+      updateUI();
+    }
+
+    function stopTimer() {
+      if (timerId) {
+        clearInterval(timerId);
+        timerId = null;
+      }
+    }
+
+    function onTimerComplete() {
+      if (currentMode === 'work') {
+        completedPomodoros += 1;
+        completedCycles += 1;
+        if (completedCycles >= 4) {
+          setMode('longBreak');
+          completedCycles = 0;
+        } else {
+          setMode('shortBreak');
+        }
+        statusDisplay.textContent = 'Time to take a break!';
+      } else {
+        setMode('work');
+        statusDisplay.textContent = 'Back to work!';
+      }
+      updateUI();
+      navigator.vibrate?.(200);
+    }
+
+    startBtn.addEventListener('click', startTimer);
+    pauseBtn.addEventListener('click', pauseTimer);
+    resetBtn.addEventListener('click', resetTimer);
+    workModeBtn.addEventListener('click', () => setMode('work'));
+    shortBreakBtn.addEventListener('click', () => setMode('shortBreak'));
+    longBreakBtn.addEventListener('click', () => setMode('longBreak'));
+
+    updateUI();
+  </script>
+</body>
+</html>
